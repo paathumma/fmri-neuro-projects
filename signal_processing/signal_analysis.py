@@ -71,8 +71,32 @@ plt.ylabel("Amplitude (uV)")
 plt.grid(True, linestyle="--", alpha=0.5)
 plt.legend(loc="upper right")
 
+
+
+
 plt.tight_layout()
 plt.show()
+
+#PSD
+# most balanced setting for cognitive neuroscience
+window_duration = 1
+points_needed = fs * window_duration
+nperseg = int(2 ** np.ceil(np.log2(points_needed)))
+frequencies, psd = signal.welch(x, fs=fs, nperseg=nperseg, noverlap=nperseg//2)
+print(f"Chosen nperseg: {nperseg}")
+print(f"Frequency bin step size: {fs / nperseg:.3f} Hz")
+
+plt.figure(figsize=(9, 5))
+plt.semilogy(frequencies, psd, color="green", linewidth=2)
+plt.title("Power Spectral Density (Welch's Method)", fontsize=13, fontweight='bold')
+plt.xlabel("Frequency (Hz)", fontsize=12)
+plt.ylabel("Power / Frequency (uV^2/Hz)", fontsize=12)
+plt.xlim(0, 50)  # Focus up to 50 Hz
+plt.grid(True, which="both", linestyle="--", alpha=0.5)
+plt.tight_layout()
+plt.show()
+
+
 
 
 
