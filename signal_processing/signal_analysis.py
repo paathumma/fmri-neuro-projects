@@ -2,67 +2,77 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy import signal
 
-# 1. Define time parameters and basic components
-n_samples = 1000
-time = np.linspace(0, 10, n_samples, endpoint=False)
+#1. simulated neural data
 
-# 2. Create the 5 Hz square wave
-# (Using 'time' instead of 't' so array dimensions match later)
-square_wave = signal.square(2 * np.pi * 5 * time)
+# Define time parameters and basic components
+duration = 4.0
+fs = 250.0
+n_samples = int(fs*duration)
+time = np.linspace(0, duration, n_samples, endpoint=False)
 
-# 3. Create the spike signal
-spike_signal = np.zeros(n_samples)
-spike_indices = [150, 400, 750, 900]
-spike_amplitudes = [5.0, -3.0, 7.5, 4.0]
-spike_signal[spike_indices] = spike_amplitudes
+# Component A: low-frequency baseline drift (0.2 Hz slow wwave)
+baseline_drift = 3.0 * np.sin(2 * np.pi * 0.2 *time)
 
-# 4. Generate white noise
-white_noise = np.random.normal(loc=0.0, scale=1.0, size=n_samples)
+#Componet B: target neural rhythm
+alpha_rhythm = 1.5 * np.sin(2 * np.pi * 10.0 * time)
 
-# 5. Combine all signals
-sign_data = white_noise + square_wave + spike_signal
+# Component C: Power linenoise (50 Hz electrical grid interference)
+power_line = 0.8 * np.sin(2 * np.pi * 50.0 *time)
 
-# 6. Plot and visualize the combined data
-plt.figure(figsize=(10, 5))
-plt.plot(time, sign_data, label="Combined Signals", color="purple")
+# Component D: Background noise
+background_noise = np.random.normal(loc=0.0, scale=0.6, size=n_samples)
 
-plt.title("Visualisation of Combined Peak and White Noise Signal", fontsize=14, fontweight='bold')
-plt.xlabel("Time (s)", fontsize=12)
-plt.ylabel("Amplitude", fontsize=12)
-plt.grid(True, linestyle="--", alpha=0.5)
-plt.legend(fontsize=11, loc="upper right")
-plt.tight_layout()
+# Component E: Transient spike events (e.g., ERP components or spikes)
+spikes = np.zeros(n_samples)
+spike_indices = [200, 500, 800]
+spikes[spike_indices] = [4.0, -3.5, 5.0]
 
-# This will now display properly without freezing your terminal
-plt.show()
+# Combine into a single "Raw" neural signal
+raw_neural_signal = baseline_drift + alpha_rhythm + power_line + background_noise + spikes
 
 
-import scipy.signal as signal
-import matplotlib.pyplot as plt
+# 2. NEURAL FILTERING PIPELINE (USING FILTFILT)
 
-# 1. Design the High-Pass Filter 
-# (Using 50 Hz as a cutoff example; adjust as needed for your data)
-b_high, a_high = signal.butter(4, 50, btype='high', fs=1000)
+# Step 1: High-Pass Filter (Remove slow baseline drift < 0.5 Hz)
+b_hp, a_hp = signal.butter(4, 0.5, btype='high', fs=fs)
+filtered_hp = signal.filtfilt(b_hp, a_hp, raw_neural_signal)
 
-# 2. Apply the filter to sign_data
-highw = signal.lfilter(b_high, a_high, sign_data)
+# Step 2: Notch Filter (Remove 50 Hz electrical line noise)
+# Q-factor controls how narrow/sharp the notch filter is
+b_notch, a_notch = signal.iirnotch(w0=50.0, Q=30.0, fs=fs)
+filtered_notch = signal.filtfilt(b_notch, a_notch, filtered_hp)
 
-# 3. Create a brand-new, clean plot window
-plt.figure()
+# Step 3: Bandpass Filter (Isolate Alpha Band: 8.0 Hz to 13.0 Hz)
+b_bp, a_bp = signal.butter(4, [8.0, 13.0], btype='band', fs=fs)
+alpha_band_signal = signal.filtfilt(b_bp, a_bp, filtered_notch)
 
-# 4. Plot both signals using your 'time' variable
-plt.plot(time, sign_data, label="Combined Signals", color="purple", alpha=0.5)
-plt.plot(time, highw, label="High-Pass Filtered Signal", color="green")
 
-# 5. Format and display
-plt.title("IIR High-Pass Filtering")
+
+# 3. VISUALIZATION
+
+plt.figure(figsize=(12, 8))
+
+# Plot 1: Raw vs Cleaned Comparison
+plt.subplot(2, 1, 1)
+plt.plot(time, raw_neural_signal, label="Raw Neural Signal (Noisy)", color="purple", alpha=0.5)
+plt.plot(time, filtered_notch, label="Cleaned Signal (Drift & 50Hz Removed)", color="blue", linewidth=1.5)
+plt.title("Neural Signal Processing: Artifact Removal", fontsize=13, fontweight='bold')
 plt.xlabel("Time (s)")
-plt.ylabel("Amplitude")
-plt.grid(True, linestyle='--')
-plt.legend()
+plt.ylabel("Amplitude (uV)")
+plt.grid(True, linestyle="--", alpha=0.5)
+plt.legend(loc="upper right")
+
+# Plot 2: Isolated Neural Rhythm (Alpha Band)
+plt.subplot(2, 1, 2)
+plt.plot(time, alpha_band_signal, label="Isolated Alpha Rhythm (8-13 Hz)", color="green", linewidth=1.5)
+plt.title("Zero-Phase Bandpass Filtered Output", fontsize=13, fontweight='bold')
+plt.xlabel("Time (s)")
+plt.ylabel("Amplitude (uV)")
+plt.grid(True, linestyle="--", alpha=0.5)
+plt.legend(loc="upper right")
+
+plt.tight_layout()
 plt.show()
 
-# 1. Design
-b_low, a_low = signal.butter(4, 100, btype='low', fs=1000)
-# 2. Implement with filtfilt (zero phase delay)
-loww = signal.filtfilt(b_low, a_low, sign_data)
+
+
