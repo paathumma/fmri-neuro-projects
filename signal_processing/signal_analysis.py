@@ -77,6 +77,8 @@ plt.legend(loc="upper right")
 plt.tight_layout()
 plt.show()
 
+
+
 #PSD
 # most balanced setting for cognitive neuroscience
 window_duration = 1
@@ -93,6 +95,8 @@ plt.xlabel("Frequency (Hz)", fontsize=12)
 plt.ylabel("Power / Frequency (uV^2/Hz)", fontsize=12)
 plt.xlim(0, 50)  # Focus up to 50 Hz
 plt.grid(True, which="both", linestyle="--", alpha=0.5)
+
+
 plt.tight_layout()
 plt.show()
 
